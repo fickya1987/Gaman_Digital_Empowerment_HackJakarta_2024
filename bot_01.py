@@ -13,18 +13,14 @@ logger = logging.getLogger(__name__)
 # Function to set up the Assistant
 def setup_assistant(api_key: str) -> Assistant:
     openai.api_key = api_key
-    llm_model = os.getenv("OPENAI_MODEL_NAME", "gpt-4")
+    llm_model = os.getenv("OPENAI_Key", "gpt-4")
     llm = OpenAIChat(model=llm_model, api_key=api_key)
     return Assistant(
         name="web_search_assistant",
         llm=llm,
-        description="You are a helpful Assistant called 'web search bud' and your goal is to assist the user in the best way possible.",
+        description="You are AI search engine",
         instructions=[
-            "If you don't find relevant information in your knowledge base, use the `duckduckgo_search` tool to search the internet.",
-            "If you need to reference the chat history, use the `get_chat_history` tool.",
-            "If the user's question is unclear, ask clarifying questions to get more information.",
-            "Carefully read the information you have gathered and provide a clear and concise answer to the user.",
-            "Do not use phrases like 'based on my knowledge' or 'depending on the information'.",
+            "xxxxxxxx",
         ],
         show_tool_calls=False,
         search_knowledge=False,
