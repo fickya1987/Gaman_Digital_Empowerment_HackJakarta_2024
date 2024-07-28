@@ -1,30 +1,22 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import "./index.css";
-import App from "./App";
+import React from 'react';
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
-  <>
-    <ToastContainer
-      toastClassName={() =>
-        "relative flex py-4 px-3 rounded overflow-hidden cursor-pointer bg-white shadow-lg"
-      }
-      bodyClassName={() => "text-black text-base font-normal"}
-      position="bottom-left"
-      autoClose={4000}
-      hideProgressBar={true}
-      newestOnTop={false}
-      closeButton={false}
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-      theme="light"
-    />
-    <App />
-  </>
-);
+const toastSettings = {
+  toastClassName: "custom-toast-container",
+  bodyClassName: "custom-toast-body",
+  position: "bottom-left",
+  autoClose: 4000,
+  hideProgressBar: true,
+  newestOnTop: false,
+  closeButton: false,
+  closeOnClick: true,
+  rtl: false,
+  pauseOnFocusLoss: true,
+  draggable: true,
+  pauseOnHover: true,
+  theme: "light"
+};
+
+export default function CustomToastContainer() {
+  return <ToastContainer {...toastSettings} />;
+}
