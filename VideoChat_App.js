@@ -1,93 +1,89 @@
-import { useContext, createContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 
-export const MeetingAppContext = createContext();
+// Creating context to be used throughout the application for managing video chat state.
+export const VideoChatContext = createContext();
 
-export const useMeetingAppContext = () => useContext(MeetingAppContext);
+// Custom hook to streamline the consumption of our VideoChatContext in the component tree.
+export const useVideoChatContext = () => useContext(VideoChatContext);
 
-function useDeviceSelection(defaultDevice) {
-    const [device, setDevice] = useState(defaultDevice);
+// Hook for managing device selection state and updates.
+const useDevice = (initialDevice) => {
+  const [device, setDevice] = useState(initialDevice);
+  const selectDevice = device => setDevice(device);
+  return [device, selectDevice];
+};
 
-    const updateDevice = (newDevice) => {
-        setDevice(newDevice);
-    };
+// Hook to handle permission states with initial checks.
+const usePermissionStatus = () => {
+  const [status, setStatus] = useState({ camera: false, microphone: false });
 
-    return [device, updateDevice];
-}
+  useEffect(() => {
+    // Simulated permission check (to be replaced with actual permission API calls)
+    setStatus({ camera: true, microphone: true });
+  }, []);
 
-function usePermission(defaultPermission) {
-    const [permission, setPermission] = useState(defaultPermission);
+  return [status, setStatus];
+};
 
-    const updatePermission = (newPermission) => {
-        setPermission(newPermission);
-    };
+// Managing and tracking participants with raised hands.
+const useParticipantTracking = () => {
+  const participantsRef = useRef([]);
+  const [participants, setParticipants] = useState([]);
 
-    useEffect(() => {
-        // imagined permission check flow
-    }, []);
+  const raiseHand = (id) => {
+    const timestamp = new Date().getTime();
+    const updatedParticipants = participantsRef.current.filter(p => p.id !== id);
+    updatedParticipants.push({ id, raisedAt: timestamp });
+    setParticipants(updatedParticipants);
+  };
 
-    return [permission, updatePermission];
-}
+  // Cleanup function to prune old raised hand statuses.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const activeParticipants = participantsRef.current.filter(p => now - p.raisedAt <= 15000);
+      setParticipants(activeParticipants);
+    }, 1000);
 
-function useRaisedHandsTracking() {
-    const raisedHandsParticipantsRef = useRef([]);
-    const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
+    return () => clearInterval(interval);
+  }, []);
 
-    const participantRaisedHand = (participantId) => {
-        const currentItem = { participantId, raisedHandOn: new Date().getTime() };
-        const updatedList = raisedHandsParticipantsRef.current.filter(item => item.participantId !== participantId);
-        updatedList.push(currentItem);
-        setRaisedHandsParticipants(updatedList);
-    };
+  return [participants, raiseHand];
+};
 
-    const removeStaleEntries = () => {
-        const now = new Date().getTime();
-        const validEntries = raisedHandsParticipantsRef.current.filter(item => now - item.raisedHandOn <= 15000);
-        setRaisedHandsParticipants(validEntries);
-    };
+// Main context provider component
+export const VideoChatProvider = ({ children }) => {
+  const [mic, selectMic] = useDevice({ id: null, label: 'Default Microphone' });
+  const [webcam, selectWebcam] = useDevice({ id: null, label: 'Default Webcam' });
+  const [speaker, selectSpeaker] = useDevice({ id: null, label: 'Default Speaker' });
+  const [permissionStatus, setPermissionStatus] = usePermissionStatus();
+  const [participantsWithHandsRaised, raiseHand] = useParticipantTracking();
+  const [sidebarVisible, setSidebarVisibility] = useState(false);
+  const [pictureInPictureEnabled, setPictureInPicture] = useState(false);
 
-    useEffect(() => {
-        raisedHandsParticipantsRef.current = raisedHandsParticipants;
-    }, [raisedHandsParticipants]);
+  // Providing state and methods through context to be consumed in components.
+  const contextValue = {
+    mic,
+    webcam,
+    speaker,
+    permissionStatus,
+    participantsWithHandsRaised,
+    sidebarVisible,
+    pictureInPictureEnabled,
+    actions: {
+      selectMic,
+      selectWebcam,
+      selectSpeaker,
+      setPermissionStatus,
+      raiseHand,
+      setSidebarVisibility,
+      setPictureInPicture
+    }
+  };
 
-    useEffect(() => {
-        const interval = setInterval(removeStaleEntries, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    return [raisedHandsParticipants, participantRaisedHand];
-}
-
-export const MeetingAppProvider = ({ children }) => {
-    const [selectedMic, setSelectedMic] = useDeviceSelection({ id: null, label: null });
-    const [selectedWebcam, setSelectedWebcam] = useDeviceSelection({ id: null, label: null });
-    const [selectedSpeaker, setSelectedSpeaker] = useDeviceSelection({ id: null, label: null });
-    const [isCameraPermissionAllowed, setIsCameraPermissionAllowed] = usePermission(null);
-    const [isMicrophonePermissionAllowed, setIsMicrophonePermissionAllowed] = usePermission(null);
-    const [raisedHandsParticipants, participantRaisedHand] = useRaisedHandsTracking();
-    const [sideBarMode, setSideBarMode] = useState(null);
-    const [pipMode, setPipMode] = useState(false);
-
-    return (
-        <MeetingAppContext.Provider
-            value={{
-                selectedMic,
-                selectedWebcam,
-                selectedSpeaker,
-                isCameraPermissionAllowed,
-                isMicrophonePermissionAllowed,
-                raisedHandsParticipants,
-                sideBarMode,
-                pipMode,
-                setSelectedMic,
-                setSelectedWebcam,
-                setSelectedSpeaker,
-                setIsCameraPermissionAllowed,
-                setIsMicrophonePermissionAllowed,
-                setSideBarMode,
-                setPipMode,
-                participantRaisedHand
-            }}
-        >
-        </MeetingAppContext.Provider>
-    );
+  return (
+    <VideoChatContext.Provider value={contextValue}>
+      {children}
+    </VideoChatContext.Provider>
+  );
 };
