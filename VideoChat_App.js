@@ -4,94 +4,90 @@ export const MeetingAppContext = createContext();
 
 export const useMeetingAppContext = () => useContext(MeetingAppContext);
 
-export const MeetingAppProvider = ({ children }) => {
-  const [selectedMic, setSelectedMic] = useState({ id: null, label: null });
-  const [selectedWebcam, setSelectedWebcam] = useState({ id: null, label: null });
-  const [selectedSpeaker, setSelectedSpeaker] = useState({ id: null, label: null });
-  const [isCameraPermissionAllowed, setIsCameraPermissionAllowed] = useState(null);
-  const [isMicrophonePermissionAllowed, setIsMicrophonePermissionAllowed] = useState(null);
-  const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
-  const [sideBarMode, setSideBarMode] = useState(null);
-  const [pipMode, setPipMode] = useState(false);
+function useDeviceSelection(defaultDevice) {
+    const [device, setDevice] = useState(defaultDevice);
 
-  const useRaisedHandParticipants = () => {
-    const raisedHandsParticipantsRef = useRef();
+    const updateDevice = (newDevice) => {
+        setDevice(newDevice);
+    };
 
-    const participantRaisedHand = (participantId) => {
-      const raisedHandsParticipants = [...raisedHandsParticipantsRef.current];
+    return [device, updateDevice];
+}
 
-      const newItem = { participantId, raisedHandOn: new Date().getTime() };
+function usePermission(defaultPermission) {
+    const [permission, setPermission] = useState(defaultPermission);
 
-      const participantFound = raisedHandsParticipants.findIndex(
-        ({ participantId: pID }) => pID === participantId
-      );
-
-      if (participantFound === -1) {
-        raisedHandsParticipants.push(newItem);
-      } else {
-        raisedHandsParticipants[participantFound] = newItem;
-      }
-
-      setRaisedHandsParticipants(raisedHandsParticipants);
+    const updatePermission = (newPermission) => {
+        setPermission(newPermission);
     };
 
     useEffect(() => {
-      raisedHandsParticipantsRef.current = raisedHandsParticipants;
-    }, [raisedHandsParticipants]);
-
-    const _handleRemoveOld = () => {
-      const raisedHandsParticipants = [...raisedHandsParticipantsRef.current];
-
-      const now = new Date().getTime();
-
-      const persisted = raisedHandsParticipants.filter(({ raisedHandOn }) => {
-        return parseInt(raisedHandOn) + 15000 > parseInt(now);
-      });
-
-      if (raisedHandsParticipants.length !== persisted.length) {
-        setRaisedHandsParticipants(persisted);
-      }
-    };
-
-    useEffect(() => {
-      const interval = setInterval(_handleRemoveOld, 1000);
-
-      return () => {
-        clearInterval(interval);
-      };
+        // imagined permission check flow
     }, []);
 
-    return { participantRaisedHand };
-  };
+    return [permission, updatePermission];
+}
 
-  return (
-    <MeetingAppContext.Provider
-      value={{
-        // states
+function useRaisedHandsTracking() {
+    const raisedHandsParticipantsRef = useRef([]);
+    const [raisedHandsParticipants, setRaisedHandsParticipants] = useState([]);
 
-        raisedHandsParticipants,
-        selectedMic,
-        selectedWebcam,
-        selectedSpeaker,
-        sideBarMode,
-        pipMode,
-        isCameraPermissionAllowed,
-        isMicrophonePermissionAllowed,
+    const participantRaisedHand = (participantId) => {
+        const currentItem = { participantId, raisedHandOn: new Date().getTime() };
+        const updatedList = raisedHandsParticipantsRef.current.filter(item => item.participantId !== participantId);
+        updatedList.push(currentItem);
+        setRaisedHandsParticipants(updatedList);
+    };
 
-        // setters
+    const removeStaleEntries = () => {
+        const now = new Date().getTime();
+        const validEntries = raisedHandsParticipantsRef.current.filter(item => now - item.raisedHandOn <= 15000);
+        setRaisedHandsParticipants(validEntries);
+    };
 
-        setRaisedHandsParticipants,
-        setSelectedMic,
-        setSelectedWebcam,
-        setSelectedSpeaker,
-        setSideBarMode,
-        setPipMode,
-        useRaisedHandParticipants,
-        setIsCameraPermissionAllowed,
-        setIsMicrophonePermissionAllowed,
-      }}
-    >
-      {children}
-    </MeetingAppContext.Provider>
-  );
+    useEffect(() => {
+        raisedHandsParticipantsRef.current = raisedHandsParticipants;
+    }, [raisedHandsParticipants]);
+
+    useEffect(() => {
+        const interval = setInterval(removeStaleEntries, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return [raisedHandsParticipants, participantRaisedHand];
+}
+
+export const MeetingAppProvider = ({ children }) => {
+    const [selectedMic, setSelectedMic] = useDeviceSelection({ id: null, label: null });
+    const [selectedWebcam, setSelectedWebcam] = useDeviceSelection({ id: null, label: null });
+    const [selectedSpeaker, setSelectedSpeaker] = useDeviceSelection({ id: null, label: null });
+    const [isCameraPermissionAllowed, setIsCameraPermissionAllowed] = usePermission(null);
+    const [isMicrophonePermissionAllowed, setIsMicrophonePermissionAllowed] = usePermission(null);
+    const [raisedHandsParticipants, participantRaisedHand] = useRaisedHandsTracking();
+    const [sideBarMode, setSideBarMode] = useState(null);
+    const [pipMode, setPipMode] = useState(false);
+
+    return (
+        <MeetingAppContext.Provider
+            value={{
+                selectedMic,
+                selectedWebcam,
+                selectedSpeaker,
+                isCameraPermissionAllowed,
+                isMicrophonePermissionAllowed,
+                raisedHandsParticipants,
+                sideBarMode,
+                pipMode,
+                setSelectedMic,
+                setSelectedWebcam,
+                setSelectedSpeaker,
+                setIsCameraPermissionAllowed,
+                setIsMicrophonePermissionAllowed,
+                setSideBarMode,
+                setPipMode,
+                participantRaisedHand
+            }}
+        >
+        </MeetingAppContext.Provider>
+    );
 };
