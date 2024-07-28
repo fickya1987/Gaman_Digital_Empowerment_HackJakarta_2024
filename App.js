@@ -1,51 +1,39 @@
+import React, { useEffect } from "react";
 import { MeetingProvider } from "@videosdk.live/react-sdk";
-import { useEffect, useState } from "react";
-import { useMeetingSetup } from "./hooks/useMeetingSetup"; // Example of a custom hook
-import MeetingAppProvider from "./MeetingAppContextDef"; // Singular export
-import MeetingContainer from "./meeting/MeetingContainer";
-import LeaveScreen from "./components/screens/LeaveScreen";
-import JoiningScreen from "./components/screens/JoiningScreen";
-
-const isMobile = window.matchMedia("only screen and (max-width: 768px)").matches;
+import { useMediaQuery } from './hooks/useMediaQuery'; // Custom hook for media query
+import { useMeeting } from './hooks/useMeeting'; // Redefined custom hook
+import { MeetingContextProvider } from './contexts/MeetingContext'; // Context provider
+import MeetingLayout from './components/MeetingLayout'; // Main meeting UI component
+import { ScreenManager } from './components/ScreenManager'; // Manages different screens
 
 function App() {
-  const [meetingState, meetingActions] = useMeetingSetup();
-  const { token, meetingId, participantName, micOn, webcamOn, customAudioStream,
-    customVideoStream, isMeetingStarted, isMeetingLeft } = meetingState;
-  const { setToken, setMeetingId, setParticipantName, setMicOn, setWebcamOn,
-    setCustomAudioStream, setCustomVideoStream, setMeetingStarted, setIsMeetingLeft } = meetingActions;
+  const isMobile = useMediaQuery('(max-width: 768px)'); // Using custom hook for media queries
+  const { meetingContext, setMeetingContext, actions } = useMeeting();
 
   useEffect(() => {
-    if (isMobile) {
-      window.onbeforeunload = () => "Are you sure you want to exit?";
-    }
+    // Handling exit confirmation on mobile devices
+    window.onbeforeunload = isMobile ? () => "Are you sure you want to exit?" : null;
   }, [isMobile]);
 
   return (
-    <MeetingAppProvider>
-      {isMeetingStarted ? (
-        <MeetingProvider
+    <MeetingContextProvider value={{ meetingContext, setMeetingContext }}>
+      <ScreenManager>
+        <MeetingLayout
           config={{
-            meetingId,
-            micEnabled: micOn,
-            webcamEnabled: webcamOn,
-            name: participantName || "TestUser",
+            meetingId: meetingContext.meetingId,
+            micEnabled: meetingContext.micOn,
+            webcamEnabled: meetingContext.webcamOn,
+            name: meetingContext.participantName || "Anonymous",
             multiStream: true,
-            customCameraVideoTrack: customVideoStream,
-            customMicrophoneAudioTrack: customAudioStream
+            customVideoTrack: meetingContext.customVideoStream,
+            customAudioTrack: meetingContext.customAudioStream,
           }}
-          token={token}
-          reinitialiseMeetingOnConfigChange={true}
-          joinWithoutUserInteraction={true}
-        >
-          <MeetingContainer onMeetingLeave={() => meetingActions.resetMeeting()} />
-        </MeetingProvider>
-      ) : isMeetingLeft ? (
-        <LeaveScreen setIsMeetingLeft={setIsMeetingLeft} />
-      ) : (
-        <JoiningScreen {...meetingState} {...meetingActions} />
-      )}
-    </MeetingAppProvider>
+          token={meetingContext.token}
+          onLeave={actions.resetMeeting}
+          meetingStatus={meetingContext}
+        />
+      </ScreenManager>
+    </MeetingContextProvider>
   );
 }
 
